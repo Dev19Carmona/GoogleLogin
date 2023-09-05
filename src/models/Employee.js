@@ -13,6 +13,7 @@ const Schema = new mongoose.Schema(
     },
     isRemove: { type: Boolean, default: false },
     isDeptor: { type: Boolean, default: false },
+    balance: { type: Number, default: 0 },
   },
   {
     timestamps: true,

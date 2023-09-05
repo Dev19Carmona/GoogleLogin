@@ -1,16 +1,21 @@
 const Debts = require("../models/Debts.js");
 const Event = require("../models/Events.js");
+const Employee = require("../models/Employee.js");
 const { v4: uuidv4 } = require("uuid");
 const { getDateInfo } = require("./functions/date.js");
-const { employee } = require("./Employee.js");
 
 const debts = async (req, res) => {
-  let query = {};
-  const { month, employeeId } = req.body;
-  if (month) query.month = month;
-  if (employeeId) query.employeeId = employeeId;
-  const debts = await Debts.find(query);
-  res.status(200).json(debts);
+  try {
+    let query = {};
+    const { month, employeeId } = req.body;
+    if (month) query.month = month;
+    if (employeeId) query.employeeId = employeeId;
+    const debts = await Debts.find(query);
+    if (!debts) throw new Error("DEBT_NOT_FOUND");
+    res.status(200).json(debts);
+  } catch (error) {
+    res.status(500).json(error.toString());
+  }
 };
 
 const debts_Create = async (req, res) => {
@@ -31,33 +36,52 @@ const debts_Create = async (req, res) => {
       total: debt.total,
     }));
     const newDebts = await Debts.insertMany(insert);
-    res.status(200).json(newDebts);
+    console.log("newDebts", insert);
+    if(res) res.status(200).json(newDebts);
+    else return true
+
   } catch (error) {
-    res.status(500).send("SERVER_ERROR");
+    if(res) res.status(500).send("SERVER_ERROR");
+    else return Promise.reject(error)
   }
 };
 const debts_Pay = async (req, res) => {
   try {
-    const { _id, paymentAmount } = req.body;
+    const { _id, paymentAmount = 0, disponibleAmount = 0 } = req.body;
     const debt = await Debts.findOne({ _id });
+    const totalPay = paymentAmount + disponibleAmount;
 
     if (!debt) throw new Error("DEBT_NOT_FOUND");
-    if (debt.unpaid - paymentAmount < 0)
+    if (debt.unpaid - totalPay < 0)
       throw new Error("UNPAID_CANNOT_BE_LESS_THAN_ZERO");
+
+    let employee
+    if (disponibleAmount > 0){
+      employee = await Employee.findOne({ _id: debt.employeeId });
+      if(employee.balance - disponibleAmount < 0)throw new Error('EMPLOYEE_HAS_NO_CREDIT_BALANCE')
+      employee.balance = employee.balance - disponibleAmount
+    }
 
     debt.payments.push({
       date: new Date(),
-      value: paymentAmount,
+      value: totalPay,
     });
 
-    if(debt.unpaid - paymentAmount === 0) debt.isPaid = true
-    debt.unpaid = debt.unpaid - paymentAmount;
+    if (debt.unpaid - totalPay === 0) debt.isPaid = true;
+    debt.unpaid = debt.unpaid - totalPay;
 
     await debt.save();
+
+    /**
+     * Migrar la para event update
+     * Si excede el valor del evento guardar saldo a favor
+     */
     await Event.findOneAndUpdate(
       { _id: debt.eventId },
-      { $inc: { paid: paymentAmount } }
+      { $inc: { paid: totalPay } }
     );
+    if (employee) await employee.save();
+    
     res.status(200).json(debt);
   } catch (error) {
     console.log(error);

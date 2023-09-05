@@ -3,11 +3,41 @@ const { v4: uuidv4 } = require("uuid");
 const { getDateInfo } = require("./functions/date.js");
 
 const employee = async (req, res) => {
-  let query = {};
-  const { month } = req.body;
-  if (month) query = { "birthdateInfo.month": month };
-  const employees = await Employee.find(query);
-  res.status(200).json(employees);
+  try {
+    let query = {};
+    const { monthBirthdate, monthDebt, name } = req.query;
+    console.log(req.query);
+    if (monthBirthdate) query["birthdateInfo.month"] = monthBirthdate ;
+    if (name) query.name = { $regex:name, $options: "i" };
+
+
+    let pipeline = []
+    if (monthDebt) pipeline = [
+      {
+        $match: {
+          month: parseInt(monthDebt)
+        }
+      }
+    ]
+
+    const employees = Employee.aggregate([])
+    .match(query)
+    .lookup({
+      from: "debts",
+      localField: "_id",
+      foreignField: "employeeId",
+      pipeline,
+      as: "debts"
+    })
+
+    employees.addFields({ totalDebts: { $sum: "$debts.total" } });
+    const response = await employees.exec()
+
+    if (response.length < 1) throw new Error("EMPLOYEE_NOT_FOUND");
+    res.status(200).json(response);
+  } catch (error) {
+    res.status(500).send(error.toString());
+  }
 };
 
 const employee_Create = async (req, res) => {
@@ -28,14 +58,15 @@ const employee_Create = async (req, res) => {
 };
 const employee_Update = async (req, res) => {
   try {
-    const { _id, name, birthdate } = req.body;
+    const { _id, name, birthdate, balance } = req.body;
     const birthdateInfo = getDateInfo(birthdate);
+    const update = {}
+    if (name) update.$set.name = name
+    if (birthdate) update.$set.birthdateInfo = birthdateInfo
+    if (balance) update.$inc = { balance: balance }
     const employeeUpdated = await Employee.findByIdAndUpdate(
       _id,
-      {
-        name,
-        birthdateInfo,
-      },
+      update,
       {
         new: true,
       }
@@ -49,5 +80,25 @@ const employee_Update = async (req, res) => {
     res.status(500).send("Can't update User");
   }
 };
+const employee_Delete = async (req, res) => {
+  try {
+    const { _id } = req.params;
+    const employeeDeleted = await Employee.findByIdAndUpdate(_id, {
+      isRemove: false,
+    });
+    if (!employeeDeleted) {
+      throw new Error("Employee NOT Found");
+    } else {
+      res.status(200).json(employeeDeleted);
+    }
+  } catch (error) {
+    res.status(500).send(error.toString());
+  }
+};
 
-module.exports = { employee, employee_Create, employee_Update };
+module.exports = {
+  employee,
+  employee_Create,
+  employee_Update,
+  employee_Delete,
+};

@@ -12,7 +12,9 @@ const Schema = new mongoose.Schema(
       day: { type: Number, default: null },
     },
     total: { type: Number, default: 0 },
+    fee: { type: Number, default: 0 },
     paid: { type: Number, default: 0 },
+    participants: { type: Array, default: [] },
     isRemove: { type: Boolean, default: false },
   },
   {
