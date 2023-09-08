@@ -5,6 +5,6 @@ const { employee, employee_Update, employee_Create, employee_Delete } = require(
 router.get("/", employee);
 router.post("/create", employee_Create);
 router.put("/update", employee_Update);
-router.patch("/delete", employee_Delete);
+router.patch("/delete/:_id", employee_Delete);
 
 module.exports = router;

@@ -4,34 +4,32 @@ const { getDateInfo } = require("./functions/date.js");
 
 const employee = async (req, res) => {
   try {
-    let query = {};
-    const { monthBirthdate, monthDebt, name } = req.query;
-    console.log(req.query);
-    if (monthBirthdate) query["birthdateInfo.month"] = monthBirthdate ;
-    if (name) query.name = { $regex:name, $options: "i" };
+    let query = {isRemove: false};
+    const { monthBirthdate, monthDebt, name, _id } = req.query;
+    if (monthBirthdate) query["birthdateInfo.month"] = monthBirthdate;
+    if (name) query.name = { $regex: name, $options: "i" };
+    
 
-
-    let pipeline = []
-    if (monthDebt) pipeline = [
-      {
-        $match: {
-          month: parseInt(monthDebt)
-        }
-      }
-    ]
-
-    const employees = Employee.aggregate([])
-    .match(query)
-    .lookup({
+    let pipeline = [];
+    if (monthDebt)
+      pipeline = [
+        {
+          $match: {
+            month: parseInt(monthDebt),
+          },
+        },
+      ];
+      if (_id) query._id = _id;
+    const employees = Employee.aggregate([]).match(query).lookup({
       from: "debts",
       localField: "_id",
       foreignField: "employeeId",
       pipeline,
-      as: "debts"
-    })
+      as: "debts",
+    });
 
     employees.addFields({ totalDebts: { $sum: "$debts.total" } });
-    const response = await employees.exec()
+    const response = await employees.exec();
 
     if (response.length < 1) throw new Error("EMPLOYEE_NOT_FOUND");
     res.status(200).json(response);
@@ -60,17 +58,13 @@ const employee_Update = async (req, res) => {
   try {
     const { _id, name, birthdate, balance } = req.body;
     const birthdateInfo = getDateInfo(birthdate);
-    const update = {}
-    if (name) update.$set.name = name
-    if (birthdate) update.$set.birthdateInfo = birthdateInfo
-    if (balance) update.$inc = { balance: balance }
-    const employeeUpdated = await Employee.findByIdAndUpdate(
-      _id,
-      update,
-      {
-        new: true,
-      }
-    );
+    const update = {};
+    if (name) update.$set.name = name;
+    if (birthdate) update.$set.birthdateInfo = birthdateInfo;
+    if (balance) update.$inc = { balance: balance };
+    const employeeUpdated = await Employee.findByIdAndUpdate(_id, update, {
+      new: true,
+    });
     if (!employeeUpdated) {
       res.status(404).send("Employee NOT Found");
     } else {
@@ -84,7 +78,7 @@ const employee_Delete = async (req, res) => {
   try {
     const { _id } = req.params;
     const employeeDeleted = await Employee.findByIdAndUpdate(_id, {
-      isRemove: false,
+      isRemove: true,
     });
     if (!employeeDeleted) {
       throw new Error("Employee NOT Found");

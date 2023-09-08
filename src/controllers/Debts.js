@@ -4,13 +4,19 @@ const Employee = require("../models/Employee.js");
 const { v4: uuidv4 } = require("uuid");
 const { getDateInfo } = require("./functions/date.js");
 
-const debts = async (req, res) => {
+const debt = async (req, res) => {
   try {
     let query = {};
     const { month, employeeId } = req.body;
     if (month) query.month = month;
     if (employeeId) query.employeeId = employeeId;
-    const debts = await Debts.find(query);
+    const debts = await Debts.aggregate([]).match(query).lookup({
+      from: "events",
+      localField: "eventId",
+      foreignField: "_id",
+      as: "event",
+    }).unwind('event');
+
     if (!debts) throw new Error("DEBT_NOT_FOUND");
     res.status(200).json(debts);
   } catch (error) {
@@ -18,7 +24,7 @@ const debts = async (req, res) => {
   }
 };
 
-const debts_Create = async (req, res) => {
+const debt_Create = async (req, res) => {
   try {
     const {
       debts = [],
@@ -45,7 +51,7 @@ const debts_Create = async (req, res) => {
     else return Promise.reject(error)
   }
 };
-const debts_Pay = async (req, res) => {
+const debt_Pay = async (req, res) => {
   try {
     const { _id, paymentAmount = 0, disponibleAmount = 0 } = req.body;
     const debt = await Debts.findOne({ _id });
@@ -88,7 +94,7 @@ const debts_Pay = async (req, res) => {
     res.status(400).send(error.toString());
   }
 };
-const debts_Update = async (req, res) => {
+const debt_Update = async (req, res) => {
   try {
     const { _id, name, birthdate } = req.body;
     const birthdateInfo = getDateInfo(birthdate);
@@ -112,4 +118,4 @@ const debts_Update = async (req, res) => {
   }
 };
 
-module.exports = { debts, debts_Create, debts_Update, debts_Pay };
+module.exports = { debt, debt_Create, debt_Update, debt_Pay };
