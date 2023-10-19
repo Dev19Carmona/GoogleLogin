@@ -81,7 +81,7 @@ const employee_Delete = async (req, res) => {
       isRemove: true,
     });
     if (!employeeDeleted) {
-      throw new Error("Employee NOT Found");
+      throw new Error("EMPLOYEE_NOT_FOUND");
     } else {
       res.status(200).json(employeeDeleted);
     }

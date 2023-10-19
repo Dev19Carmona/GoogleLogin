@@ -2,13 +2,13 @@ const Event = require("../models/Events.js");
 const { v4: uuidv4 } = require("uuid");
 const { getDateInfo } = require("./functions/date.js");
 const { debts_Create } = require("./Debts.js");
-const Transaction = require("../models/Transaction.js");
 const { transaction_Create } = require("./Transaction.js");
 
 const event = async (req, res) => {
   try {
     let query = {};
     const { month, year } = req.query;
+    console.log(month);
     if (month && year) {
       query = {
         "dateInfo.month": month,
