@@ -1,7 +1,9 @@
 const express = require("express");
+const { Mail_send } = require("../controllers/Mail.js");
 const router = express.Router();
-const Mail_router = require("./Mail.js");
 
-router.use("/mail", Mail_router)
+router.get("/send", Mail_send);
+
+
 
 module.exports = router;

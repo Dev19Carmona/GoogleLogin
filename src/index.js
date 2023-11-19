@@ -1,5 +1,3 @@
-const startServer = require("./app.js");
-const connectDB = require("./db.js");
+const startServerGoogleTools = require("./app");
 
-startServer();
-connectDB();
+startServerGoogleTools()
