@@ -1,60 +1,112 @@
-const nodemailer = require("nodemailer");
-const { google } = require("googleapis");
 
+const { sendMail } = require("../functions/mail");
+const { HTML_passwordChange } = require("../html/PasswordChange");
+const puppeteer = require("puppeteer");
+const url = "https://www.farfetch.com/co/sets/men/nike-dunks.aspx";
 const Mail_send = async (req, res) => {
   try {
-    const GOOGLE_CLIENT_ID =
-      "750323481465-050vtn16ococeps9ef7j8b7ejjk319m2.apps.googleusercontent.com";
-    const GOOGLE_CLIENT_SECRET = "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";
-    const GOOGLE_REFRESH_TOKEN =
-      "1//049UKUlYkGp9zCgYIARAAGAQSNwF-L9IrTVdGpFM9kss_EL-Ad_imdYxSBPiOLvTrPxntvkZxq9XJK-VZ5kEgy9cPtfoagBkl49w";
-    const GOOGLE_REDIRECT_URI = "https://developers.google.com/oauthplayground";
-    const contentHTML = `
-        <h1>User information</h1>
-        <ul>
-          <li>Camilo Carmona</li>
-          <li>Prueba</li>
-          <li>Email</li>
-        </ul>
-        
-        `;
+    const contentHTML = HTML_passwordChange;
     const mailOptions = {
-      from: "Camilo Carmona Prueba",
+      from: "Eagle_Soft",
       to: "camilocr1294@gmail.com",
-      subject: "PRUEBA!!! PAPIIIIII",
+      subject: "Cambio de Contraseña EagleSoft",
       html: contentHTML,
     };
-    const oAuth2Client = new google.auth.OAuth2(
-      GOOGLE_CLIENT_ID,
-      GOOGLE_CLIENT_SECRET,
-      GOOGLE_REDIRECT_URI
-    );
-    oAuth2Client.setCredentials({
-      refresh_token: GOOGLE_REFRESH_TOKEN,
-    });
-    const accessToken = await oAuth2Client.getAccessToken();
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: "camilocr1294@gmail.com",
-        clientId: GOOGLE_CLIENT_ID,
-        clientSecret: GOOGLE_CLIENT_SECRET,
-        refreshToken: GOOGLE_REFRESH_TOKEN,
-        accessToken,
-      },
-    });
-
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.log(error);
-      } else {
-        console.log("email sending");
-      }
-    });
-    res.status(200).json({ message: "TRANSACTION_SUCCESS" });
+    await sendMail(mailOptions);
+    res.status(200).json({ message: "EMAIL_SENDING" });
   } catch (error) {
     res.status(500).json({ message: error });
   }
 };
-module.exports = { Mail_send };
+const Open_window = async (req, res) => {
+  try {
+    const browser = await puppeteer.launch({
+      headless: false,
+      slowMo: 200,
+    });
+    const page = await browser.newPage();
+    await page.goto("https://www.farfetch.com/co/sets/men/nike-dunks.aspx");
+    await browser.close();
+    res.status(200).json({ message: "WEBSITE_OPEN" });
+  } catch (error) {
+    res.status(500).json({ message: error });
+  }
+};
+
+const captureScreenshot = async (req, res) => {
+  try {
+    const browser = await puppeteer.launch({
+      headless: false,
+      slowMo: 200,
+    });
+    const page = await browser.newPage();
+    await page.goto("https://www.farfetch.com/co/sets/men/nike-dunks.aspx");
+    await page.screenshot({ path: "example.png" });
+    await browser.close();
+    res.status(200).json({ message: "SCREENSHOT" });
+  } catch (error) {
+    res.status(500).json({ message: error });
+  }
+};
+
+async function navigateWebPage() {
+  const browser = await puppeteer.launch({
+    slowMo: 200,
+    headless: false,
+  });
+  const page = await browser.newPage();
+  await page.goto("https://quotes.toscrape.com");
+  await page.click('a[href="/login"]');
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  await browser.close();
+}
+
+async function getDataFromWebPage(req, res) {
+  try {
+    const browser = await puppeteer.launch({
+      headless: false,
+    });
+    const page = await browser.newPage();
+
+    await page.goto(url);
+
+    const data = await page.evaluate(async () => {
+      const nodeListToInnerTextArray = (nodeList) => {
+        var arrayFromNodeList = Array.from(nodeList);
+          var result = [];
+          arrayFromNodeList.forEach(function (element) {
+            result.push(element.innerText);
+          });
+          return result
+      }
+      let title = document.querySelector("h1").innerText;
+      let nodeList_Descriptions = document.querySelectorAll("[data-component='ProductCardDescription']");
+      let nodeList_Prices = document.querySelectorAll("[data-component='ProductCardDescription']");
+
+      const descriptions = nodeListToInnerTextArray(nodeList_Descriptions);
+
+      console.log(descriptions);
+
+      return {
+        title,
+        descriptions,
+      };
+    });
+
+    console.log(data);
+    await browser.close();
+    res.status(200).json(data);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+}
+
+
+module.exports = {
+  Mail_send,
+  Open_window,
+  captureScreenshot,
+  navigateWebPage,
+  getDataFromWebPage,
+};
